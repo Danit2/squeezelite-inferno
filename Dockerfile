@@ -1,0 +1,52 @@
+FROM rust:1.92.0-slim-trixie AS inferno-builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    libasound2-dev \
+    pkg-config \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+ARG INFERNO_REF=dev
+
+RUN git clone --recurse-submodules https://github.com/teodly/inferno.git . && \
+    git checkout "${INFERNO_REF}" && \
+    git submodule update --init --recursive
+
+ENV RUSTFLAGS="-C target-feature=-crt-static"
+
+RUN mkdir /out && \
+    cargo build --release -p alsa_pcm_inferno && \
+    cp target/release/libasound_module_pcm_inferno.so /out/
+
+
+FROM debian:trixie-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    squeezelite \
+    libasound2t64 \
+    alsa-utils \
+    ca-certificates \
+    tzdata \
+    tini \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=inferno-builder /out/libasound_module_pcm_inferno.so /opt/inferno/libasound_module_pcm_inferno.so
+
+RUN set -eux; \
+    ALSA_PLUGIN_DIR="$(find /usr/lib -type d -name alsa-lib | head -n 1)"; \
+    test -n "${ALSA_PLUGIN_DIR}"; \
+    cp /opt/inferno/libasound_module_pcm_inferno.so "${ALSA_PLUGIN_DIR}/"; \
+    chmod 644 "${ALSA_PLUGIN_DIR}/libasound_module_pcm_inferno.so"
+
+COPY asound.conf /etc/asound.conf
+COPY start.sh /usr/local/bin/start.sh
+
+RUN chmod +x /usr/local/bin/start.sh
+
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["/usr/local/bin/start.sh"]
