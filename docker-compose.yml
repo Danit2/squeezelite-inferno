@@ -1,0 +1,102 @@
+services:
+  lms:
+    image: lmscommunity/lyrionmusicserver:stable
+    container_name: lms
+    network_mode: host
+    restart: unless-stopped
+
+    environment:
+      - TZ=Europe/Zurich
+
+    volumes:
+      - /mnt/tank/apps/lms/config:/config
+      - /mnt/tank/apps/lms/music:/music:ro
+      - /mnt/tank/apps/lms/playlist:/playlist
+
+
+  dante-bar:
+    image: ghcr.io/DEIN-GITHUB-NAME/squeezelite-inferno:latest
+    container_name: dante-bar
+    network_mode: host
+    restart: unless-stopped
+
+    environment:
+      - TZ=Europe/Zurich
+      - LMS_SERVER=127.0.0.1
+      - LMS_PORT=9000
+
+      - PLAYER_NAME=Dante-Bar
+      - PLAYER_MAC=02:00:00:00:10:01
+
+      # Dante / Inferno
+      - INFERNO_NAME=Dante-Bar
+      - INFERNO_BIND_IP=eno2
+      - INFERNO_TX_CHANNELS=1
+      - INFERNO_RX_CHANNELS=0
+      - INFERNO_DEVICE_ID=0000020000001001
+      - INFERNO_PROCESS_ID=101
+      - INFERNO_ALT_PORT=45000
+
+      # Clock
+      - CLOCK_SOCKET=/tmp/usrvclock.sock
+      - INFERNO_CLOCK_PATH=/tmp/usrvclock.sock
+      - WAIT_FOR_CLOCK=true
+
+    volumes:
+      - /mnt/tank/apps/inferno/shared-tmp:/tmp
+      - /mnt/tank/apps/inferno/state/dante-bar:/root/.local/state/inferno_aoip
+
+    ulimits:
+      rtprio: 95
+      memlock: -1
+
+    cap_add:
+      - SYS_NICE
+      - IPC_LOCK
+
+    security_opt:
+      - seccomp=unconfined
+
+
+  dante-saal:
+    image: ghcr.io/DEIN-GITHUB-NAME/squeezelite-inferno:latest
+    container_name: dante-saal
+    network_mode: host
+    restart: unless-stopped
+
+    environment:
+      - TZ=Europe/Zurich
+      - LMS_SERVER=127.0.0.1
+      - LMS_PORT=9000
+
+      - PLAYER_NAME=Dante-Saal
+      - PLAYER_MAC=02:00:00:00:10:02
+
+      # Dante / Inferno
+      - INFERNO_NAME=Dante-Saal
+      - INFERNO_BIND_IP=eno2
+      - INFERNO_TX_CHANNELS=1
+      - INFERNO_RX_CHANNELS=0
+      - INFERNO_DEVICE_ID=0000020000001002
+      - INFERNO_PROCESS_ID=102
+      - INFERNO_ALT_PORT=45010
+
+      # Clock
+      - CLOCK_SOCKET=/tmp/usrvclock.sock
+      - INFERNO_CLOCK_PATH=/tmp/usrvclock.sock
+      - WAIT_FOR_CLOCK=true
+
+    volumes:
+      - /mnt/tank/apps/inferno/shared-tmp:/tmp
+      - /mnt/tank/apps/inferno/state/dante-saal:/root/.local/state/inferno_aoip
+
+    ulimits:
+      rtprio: 95
+      memlock: -1
+
+    cap_add:
+      - SYS_NICE
+      - IPC_LOCK
+
+    security_opt:
+      - seccomp=unconfined
