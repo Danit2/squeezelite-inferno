@@ -38,10 +38,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=inferno-builder /out/libasound_module_pcm_inferno.so /opt/inferno/libasound_module_pcm_inferno.so
 
 RUN set -eux; \
-    ALSA_PLUGIN_DIR="$(find /usr/lib -type d -name alsa-lib | head -n 1)"; \
-    test -n "${ALSA_PLUGIN_DIR}"; \
+    ALSA_LIB_PATH="$(ldconfig -p | awk '/libasound\.so\.2 / {print $NF; exit}')"; \
+    test -n "${ALSA_LIB_PATH}"; \
+    ALSA_PLUGIN_DIR="$(dirname "${ALSA_LIB_PATH}")/alsa-lib"; \
+    mkdir -p "${ALSA_PLUGIN_DIR}"; \
     cp /opt/inferno/libasound_module_pcm_inferno.so "${ALSA_PLUGIN_DIR}/"; \
-    chmod 644 "${ALSA_PLUGIN_DIR}/libasound_module_pcm_inferno.so"
+    chmod 644 "${ALSA_PLUGIN_DIR}/libasound_module_pcm_inferno.so"; \
+    ls -l "${ALSA_PLUGIN_DIR}/libasound_module_pcm_inferno.so"
 
 COPY asound.conf /etc/asound.conf
 COPY start.sh /usr/local/bin/start.sh
