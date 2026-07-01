@@ -4,7 +4,7 @@ set -eu
 : "${TZ:=Europe/Zurich}"
 
 : "${LMS_SERVER:=127.0.0.1}"
-: "${LMS_PORT:=9000}"
+: "${LMS_PORT:=3483}"
 
 : "${PLAYER_NAME:=Player1}"
 : "${PLAYER_MAC:=02:00:00:00:10:01}"
@@ -20,6 +20,8 @@ RX_CHANNELS="${RX_CHANNELS:-${INFERNO_RX_CHANNELS:-0}}"
 PROCESS_ID="${PROCESS_ID:-${INFERNO_PROCESS_ID:-1}}"
 ALT_PORT="${ALT_PORT:-${INFERNO_ALT_PORT:-14000}}"
 CLOCK_PATH="${CLOCK_PATH:-${INFERNO_CLOCK_PATH:-${CLOCK_SOCKET:-/shared/usrvclock}}}"
+TMPDIR="${TMPDIR:-/shared/tmp_${PROCESS_ID}}"
+CLOCK_STARTUP_DELAY="${CLOCK_STARTUP_DELAY:-20}"
 TX_LATENCY_NS="${TX_LATENCY_NS:-${INFERNO_TX_LATENCY_NS:-10000000}}"
 RX_LATENCY_NS="${RX_LATENCY_NS:-${INFERNO_RX_LATENCY_NS:-10000000}}"
 DEVICE_ID="${DEVICE_ID:-${INFERNO_DEVICE_ID:-}}"
@@ -97,15 +99,29 @@ echo "Process ID: ${PROCESS_ID}"
 echo "ALT Port: ${ALT_PORT}"
 echo "Clock Path: ${CLOCK_PATH}"
 
+mkdir -p "${TMPDIR}"
+rm -f "${TMPDIR}"/usrvclock-client.* 2>/dev/null || true
+
 if [ "${WAIT_FOR_CLOCK}" = "true" ]; then
-    echo "Warte auf Clock: ${CLOCK_PATH}"
 
-    while [ ! -e "${CLOCK_PATH}" ]; do
-        sleep 1
-    done
+ echo "Warte auf Clock-Socket: ${CLOCK_PATH}"
 
-    echo "Clock-Datei gefunden: ${CLOCK_PATH}"
-    ls -la "${CLOCK_PATH}" || true
+ while [ ! -S "${CLOCK_PATH}" ]; do
+
+  echo "warte auf ${CLOCK_PATH}..."
+
+  sleep 1
+
+ done
+
+ echo "Clock-Socket gefunden: ${CLOCK_PATH}"
+
+ ls -la "${CLOCK_PATH}" || true
+
+ echo "Warte ${CLOCK_STARTUP_DELAY}s auf PTP-Sync..."
+
+ sleep "${CLOCK_STARTUP_DELAY}"
+
 fi
 
 exec squeezelite \
